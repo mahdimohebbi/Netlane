@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller = StatusBarController(model: AppModel(), prefs: Preferences())
     }
 
-    // The widget's tap opens flagpulse://open.
+    // The widget's tap opens netlane://open.
     func application(_ application: NSApplication, open urls: [URL]) {
         controller?.showPopover()
     }

@@ -1,4 +1,4 @@
-name: FlagPulse
+name: Netlane
 options:
   bundleIdPrefix: com.example
   deploymentTarget:
@@ -14,7 +14,7 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     DEAD_CODE_STRIPPING: YES
 targets:
-  FlagPulse:
+  Netlane:
     type: application
     platform: macOS
     sources:
@@ -24,16 +24,16 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_NAME: FlagPulse
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.flagpulse
+        PRODUCT_NAME: Netlane
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.netlane
         INFOPLIST_FILE: App/Info.plist
-        CODE_SIGN_ENTITLEMENTS: App/FlagPulse.entitlements
+        CODE_SIGN_ENTITLEMENTS: App/Netlane.entitlements
         GENERATE_INFOPLIST_FILE: NO
     dependencies:
-      - target: FlagPulseWidget
+      - target: NetlaneWidget
         embed: true
         codeSign: true
-  FlagPulseWidget:
+  NetlaneWidget:
     type: app-extension
     platform: macOS
     sources:
@@ -41,10 +41,10 @@ targets:
       - Shared
     settings:
       base:
-        PRODUCT_NAME: FlagPulseWidget
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.flagpulse.widget
+        PRODUCT_NAME: NetlaneWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.netlane.widget
         INFOPLIST_FILE: Widget/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Widget/FlagPulseWidget.entitlements
+        CODE_SIGN_ENTITLEMENTS: Widget/NetlaneWidget.entitlements
         GENERATE_INFOPLIST_FILE: NO
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
@@ -52,11 +52,11 @@ targets:
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
 schemes:
-  FlagPulse:
+  Netlane:
     build:
       targets:
-        FlagPulse: all
-        FlagPulseWidget: all
+        Netlane: all
+        NetlaneWidget: all
     run:
       config: Debug
     archive:

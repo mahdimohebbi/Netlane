@@ -36,7 +36,7 @@ struct GeoProvider: TimelineProvider {
     }
 }
 
-struct FlagPulseWidgetView: View {
+struct NetlaneWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: GeoEntry
 
@@ -53,7 +53,7 @@ struct FlagPulseWidgetView: View {
             }
         }
         .containerBackground(.fill.tertiary, for: .widget)
-        .widgetURL(URL(string: "flagpulse://open"))
+        .widgetURL(URL(string: "netlane://open"))
     }
 
     private func small(_ geo: GeoInfo) -> some View {
@@ -103,12 +103,12 @@ struct FlagPulseWidgetView: View {
 }
 
 @main
-struct FlagPulseWidget: Widget {
+struct NetlaneWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "FlagPulseWidget", provider: GeoProvider()) { entry in
-            FlagPulseWidgetView(entry: entry)
+        StaticConfiguration(kind: "NetlaneWidget", provider: GeoProvider()) { entry in
+            NetlaneWidgetView(entry: entry)
         }
-        .configurationDisplayName("FlagPulse")
+        .configurationDisplayName("Netlane")
         .description("Your IP country and network at a glance.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }

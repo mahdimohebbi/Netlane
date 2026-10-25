@@ -51,7 +51,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popover.behavior = prefs.popoverClosesAutomatically ? .transient : .applicationDefined
         button.title = model.menuBarLabel
         button.image = prefs.showLiveSpeed ? speedImage() : nil
-        button.toolTip = model.lastGeo.map { "\($0.country) · \($0.ip)" } ?? "FlagPulse"
+        button.toolTip = model.lastGeo.map { "\($0.country) · \($0.ip)" } ?? "Netlane"
     }
 
     private func speedImage() -> NSImage {
@@ -151,7 +151,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popover.performClose(nil)
         if settingsWindow == nil {
             let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model, prefs: prefs)))
-            window.title = "FlagPulse Settings"
+            window.title = "Netlane Settings"
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
             window.center()

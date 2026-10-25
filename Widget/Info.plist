@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key><string>en</string>
-	<key>CFBundleDisplayName</key><string>FlagPulse</string>
-	<key>CFBundleExecutable</key><string>FlagPulseWidget</string>
-	<key>CFBundleIdentifier</key><string>com.example.flagpulse.widget</string>
+	<key>CFBundleDisplayName</key><string>Netlane</string>
+	<key>CFBundleExecutable</key><string>NetlaneWidget</string>
+	<key>CFBundleIdentifier</key><string>com.example.netlane.widget</string>
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-	<key>CFBundleName</key><string>FlagPulseWidget</string>
+	<key>CFBundleName</key><string>NetlaneWidget</string>
 	<key>CFBundlePackageType</key><string>XPC!</string>
 	<key>CFBundleShortVersionString</key><string>1.0</string>
 	<key>CFBundleVersion</key><string>1</string>

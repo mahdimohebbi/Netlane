@@ -26,7 +26,7 @@ struct GeoClient: Sendable {
 
     static let liveFetch: Fetcher = { url in
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
-        request.setValue("FlagPulse/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("Netlane/1.0", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await URLSession.shared.data(for: request)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw GeoError.badResponse("HTTP \(http.statusCode) from \(url.host ?? "server")")

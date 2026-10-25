@@ -1,10 +1,10 @@
 #!/bin/bash
-# Builds FlagPulse.app (with embedded widget) and packages dist/FlagPulse.dmg.
+# Builds Netlane.app (with embedded widget) and packages dist/Netlane.dmg.
 # Uses xcodebuild when full Xcode is installed; otherwise falls back to swiftc + the Command Line Tools SDK.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP_NAME=FlagPulse
+APP_NAME=Netlane
 DIST=dist
 APP="$DIST/$APP_NAME.app"
 DMG="$DIST/$APP_NAME.dmg"
@@ -62,8 +62,8 @@ else
     IDENTITY="-"
     SIGN_FLAGS=(--options runtime)
   fi
-  codesign --force --sign "$IDENTITY" "${SIGN_FLAGS[@]}" --entitlements Widget/FlagPulseWidget.entitlements "$APPEX"
-  codesign --force --sign "$IDENTITY" "${SIGN_FLAGS[@]}" --entitlements App/FlagPulse.entitlements "$APP"
+  codesign --force --sign "$IDENTITY" "${SIGN_FLAGS[@]}" --entitlements Widget/NetlaneWidget.entitlements "$APPEX"
+  codesign --force --sign "$IDENTITY" "${SIGN_FLAGS[@]}" --entitlements App/Netlane.entitlements "$APP"
 fi
 
 codesign --verify --deep --strict "$APP"

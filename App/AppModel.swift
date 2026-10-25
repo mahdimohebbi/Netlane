@@ -52,7 +52,7 @@ final class AppModel {
         monitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor in self?.pathChanged(path) }
         }
-        monitor.start(queue: DispatchQueue(label: "FlagPulse.path"))
+        monitor.start(queue: DispatchQueue(label: "Netlane.path"))
         timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.refresh() }
         }
@@ -204,7 +204,7 @@ final class AppModel {
     }
 
     private static func dnsServers() -> [String] {
-        guard let store = SCDynamicStoreCreate(nil, "FlagPulse" as CFString, nil, nil),
+        guard let store = SCDynamicStoreCreate(nil, "Netlane" as CFString, nil, nil),
               let dict = SCDynamicStoreCopyValue(store, "State:/Network/Global/DNS" as CFString) as? [String: Any],
               let servers = dict["ServerAddresses"] as? [String] else { return [] }
         return servers

@@ -1,0 +1,61 @@
+name: FlagPulse
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+targets:
+  FlagPulse:
+    type: application
+    platform: macOS
+    sources:
+      - App
+      - Shared
+    settings:
+      base:
+        PRODUCT_NAME: FlagPulse
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.flagpulse
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/FlagPulse.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - target: FlagPulseWidget
+        embed: true
+        codeSign: true
+  FlagPulseWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Widget
+      - Shared
+    settings:
+      base:
+        PRODUCT_NAME: FlagPulseWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.flagpulse.widget
+        INFOPLIST_FILE: Widget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Widget/FlagPulseWidget.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+schemes:
+  FlagPulse:
+    build:
+      targets:
+        FlagPulse: all
+        FlagPulseWidget: all
+    run:
+      config: Debug
+    archive:
+      config: Release

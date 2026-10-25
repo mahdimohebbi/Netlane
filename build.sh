@@ -51,7 +51,7 @@ else
   compile "$APP/Contents/MacOS/$APP_NAME" -module-name "$APP_NAME" -Xlinker -rpath -Xlinker @executable_path/../Frameworks
   SOURCES=(Widget/*.swift Shared/*.swift)
   compile "$APPEX/Contents/MacOS/${APP_NAME}Widget" -module-name "${APP_NAME}Widget" -application-extension \
-    -framework WidgetKit -framework SwiftUI -Xlinker -rpath -Xlinker @executable_path/../../../../Frameworks
+    -framework WidgetKit -framework SwiftUI -Xlinker -e -Xlinker _NSExtensionMain -Xlinker -rpath -Xlinker @executable_path/../../../../Frameworks
 
   if [[ -n "${TEAM_ID:-}" ]]; then
     IDENTITY=$(security find-identity -v -p codesigning | grep "($TEAM_ID)" | head -n1 | sed -E 's/.*"(.*)"/\1/')

@@ -20,6 +20,8 @@ targets:
     sources:
       - App
       - Shared
+      - path: Resources/AppIcon.icns
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: FlagPulse

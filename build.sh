@@ -45,6 +45,7 @@ else
   APPEX="$APP/Contents/PlugIns/${APP_NAME}Widget.appex"
   mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APPEX/Contents/MacOS"
   cp App/Info.plist "$APP/Contents/Info.plist"
+  cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
   cp Widget/Info.plist "$APPEX/Contents/Info.plist"
   printf 'APPL????' > "$APP/Contents/PkgInfo"
   SOURCES=(App/*.swift Shared/*.swift)

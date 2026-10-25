@@ -2,6 +2,8 @@ import SwiftUI
 
 struct PopoverView: View {
     let model: AppModel
+    let prefs: Preferences
+    let openSettings: () -> Void
     private var copied: Bool { model.ipCopied }
 
     var body: some View {
@@ -13,7 +15,6 @@ struct PopoverView: View {
         }
         .padding(14)
         .frame(width: 320)
-        .background(.regularMaterial)
     }
 
     private var geo: GeoInfo? {
@@ -81,8 +82,8 @@ struct PopoverView: View {
     private var speedCard: some View {
         Card(title: "Speed", symbol: "speedometer") {
             Row("Latency") { Text(model.speedResult?.latencyMs.map { String(format: "%.0f ms", $0) } ?? "—") }
-            Row("Download") { Text(model.speedResult?.downloadMbps.map { String(format: "%.1f Mbps", $0) } ?? "—") }
-            Row("Upload") { Text(model.speedResult?.uploadMbps.map { String(format: "%.1f Mbps", $0) } ?? "—") }
+            Row("Download") { Text(model.speedResult?.downloadMbps.map(prefs.formatMbps) ?? "—") }
+            Row("Upload") { Text(model.speedResult?.uploadMbps.map(prefs.formatMbps) ?? "—") }
             if let error = model.speedError {
                 Label(error, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
             }
@@ -102,16 +103,15 @@ struct PopoverView: View {
     }
 
     private var footer: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Toggle("Launch at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
-                    .toggleStyle(.switch).controlSize(.mini)
-                Spacer()
-                Button("Quit") { NSApp.terminate(nil) }.controlSize(.small)
+        HStack {
+            Button {
+                openSettings()
+            } label: {
+                Label("Settings…", systemImage: "gearshape")
             }
-            if let error = model.launchAtLoginError {
-                Text(error).font(.caption2).foregroundStyle(.orange).lineLimit(2)
-            }
+            .buttonStyle(.borderless)
+            Spacer()
+            Button("Quit") { NSApp.terminate(nil) }.controlSize(.small)
         }
         .font(.callout)
     }

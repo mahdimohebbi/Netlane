@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 enum SelfTest {
     static let ipwhoisSample = """
@@ -42,6 +42,12 @@ enum SelfTest {
         check(abs(Throughput.mbps(bytes: 25_000_000, seconds: 2) - 100) < 0.0001, "Mbps 25MB/2s = 100")
         check(abs(Throughput.mbps(bytes: 1_250_000, seconds: 1) - 10) < 0.0001, "Mbps 1.25MB/1s = 10")
         check(Throughput.mbps(bytes: 100, seconds: 0) == 0, "Mbps zero duration")
+
+        check(Preferences.formatRate(bytesPerSecond: 1_250_000, unit: .bits) == "10.0 Mb/s", "rate 1.25MB/s = 10.0 Mb/s")
+        check(Preferences.formatRate(bytesPerSecond: 1_260_000, unit: .bytes) == "1.3 MB/s", "rate 1.26MB/s = 1.3 MB/s")
+        check(Preferences.formatRate(bytesPerSecond: 512, unit: .bytes) == "512 B/s", "rate 512 B/s")
+        check(Preferences.formatRate(bytesPerSecond: 250_000_000, unit: .bits) == "2.0 Gb/s", "rate 2 Gb/s")
+        check(NSColor(hex: "#34C759")?.hexString == "#34C759", "color hex round trip")
 
         let fallback = GeoClient { url in
             if url == GeoClient.primaryURL { throw URLError(.timedOut) }

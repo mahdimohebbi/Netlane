@@ -27,10 +27,17 @@ final class AppModel {
     var launchAtLogin = SMAppService.mainApp.status == .enabled
     var launchAtLoginError: String?
 
+    var downloadRate: Double = 0
+    var uploadRate: Double = 0
+    var onIPChange: ((GeoInfo, GeoInfo) -> Void)?
+
     private let client = GeoClient()
     private let monitor = NWPathMonitor()
     private var debounceTask: Task<Void, Never>?
     private var timer: Timer?
+    private var trafficTimer: Timer?
+    private var lastCounters: [String: (rx: UInt32, tx: UInt32)] = [:]
+    private var lastSample = Date()
 
     var menuBarLabel: String {
         if !isOnline { return Flag.offline }
@@ -46,7 +53,7 @@ final class AppModel {
             Task { @MainActor in self?.pathChanged(path) }
         }
         monitor.start(queue: DispatchQueue(label: "FlagPulse.path"))
-        timer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.refresh() }
         }
         Task { await refresh() }
@@ -76,6 +83,7 @@ final class AppModel {
         if lastGeo == nil { geoState = .loading }
         do {
             let geo = try await client.lookup()
+            if let old = lastGeo, old.ip != geo.ip { onIPChange?(old, geo) }
             lastGeo = geo
             geoState = .loaded(geo)
         } catch {
@@ -106,6 +114,56 @@ final class AppModel {
         result.date = Date()
         if errors.count < 3 { speedResult = result }
         if !errors.isEmpty { speedError = "Failed: " + errors.joined(separator: ", ") }
+    }
+
+    func setTrafficMonitoring(_ enabled: Bool) {
+        guard enabled != (trafficTimer != nil) else { return }
+        trafficTimer?.invalidate()
+        trafficTimer = nil
+        downloadRate = 0
+        uploadRate = 0
+        guard enabled else { return }
+        lastCounters = Self.interfaceCounters()
+        lastSample = Date()
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.sampleTraffic() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        trafficTimer = timer
+    }
+
+    private func sampleTraffic() {
+        let now = Date()
+        let counters = Self.interfaceCounters()
+        let elapsed = now.timeIntervalSince(lastSample)
+        var rx: UInt64 = 0, tx: UInt64 = 0
+        for (name, current) in counters {
+            guard let previous = lastCounters[name] else { continue }
+            rx += UInt64(current.rx &- previous.rx) // 32-bit kernel counters; wrapping subtraction handles rollover
+            tx += UInt64(current.tx &- previous.tx)
+        }
+        lastCounters = counters
+        lastSample = now
+        guard elapsed > 0 else { return }
+        downloadRate = Double(rx) / elapsed
+        uploadRate = Double(tx) / elapsed
+    }
+
+    /// Byte counters for physical interfaces only, so VPN tunnels aren't counted twice.
+    private static func interfaceCounters() -> [String: (rx: UInt32, tx: UInt32)] {
+        var result: [String: (rx: UInt32, tx: UInt32)] = [:]
+        var head: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&head) == 0, let first = head else { return [:] }
+        defer { freeifaddrs(head) }
+        for ptr in sequence(first: first, next: { $0.pointee.ifa_next }) {
+            let ifa = ptr.pointee
+            let name = String(cString: ifa.ifa_name)
+            guard name.hasPrefix("en") || name.hasPrefix("pdp_ip"),
+                  let addr = ifa.ifa_addr, addr.pointee.sa_family == UInt8(AF_LINK),
+                  let data = ifa.ifa_data?.assumingMemoryBound(to: if_data.self) else { continue }
+            result[name] = (data.pointee.ifi_ibytes, data.pointee.ifi_obytes)
+        }
+        return result
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

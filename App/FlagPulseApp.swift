@@ -1,4 +1,4 @@
-import SwiftUI
+import AppKit
 
 @main
 enum Launcher {
@@ -6,19 +6,29 @@ enum Launcher {
         if CommandLine.arguments.contains("--selftest") {
             exit(SelfTest.run() ? 0 : 1)
         }
-        FlagPulseApp.main()
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.setActivationPolicy(.accessory)
+        withExtendedLifetime(delegate) { app.run() }
     }
 }
 
-struct FlagPulseApp: App {
-    private let model = AppModel()
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var controller: StatusBarController?
 
-    var body: some Scene {
-        MenuBarExtra {
-            PopoverView(model: model)
-        } label: {
-            Text(model.menuBarLabel)
-        }
-        .menuBarExtraStyle(.window)
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        controller = StatusBarController(model: AppModel(), prefs: Preferences())
+    }
+
+    // The widget's tap opens flagpulse://open.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        controller?.showPopover()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        controller?.showPopover()
+        return false
     }
 }

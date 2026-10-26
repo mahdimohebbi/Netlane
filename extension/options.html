@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Netlane</title>
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body class="options">
+  <h1 data-i18n="settingsTitle">Netlane settings</h1>
+
+  <div class="field">
+    <span data-i18n="theme">Theme</span>
+    <div class="seg" role="radiogroup">
+      <label><input type="radio" name="theme" value="system"><span data-i18n="themeSystem">System</span></label>
+      <label><input type="radio" name="theme" value="light"><span data-i18n="themeLight">Light</span></label>
+      <label><input type="radio" name="theme" value="dark"><span data-i18n="themeDark">Dark</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <span data-i18n="unit">Speed unit</span>
+    <div class="seg" role="radiogroup">
+      <label><input type="radio" name="unit" value="bits"><span class="mono">Mbps</span></label>
+      <label><input type="radio" name="unit" value="bytes"><span class="mono">MB/s</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="check"><input type="checkbox" name="notifyOnChange"><span data-i18n="notifyOnChange">Notify me when my IP address changes</span></label>
+  </div>
+
+  <div class="field">
+    <label class="check"><input type="checkbox" name="showBadge"><span data-i18n="showBadge">Show country code on the toolbar icon</span></label>
+  </div>
+
+  <p class="saved" id="saved" aria-live="polite"></p>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

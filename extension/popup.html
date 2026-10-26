@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Netlane</title>
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body class="popup">
+  <header class="header">
+    <img class="flag-large" id="flag" alt="" src="icons/icon-128.png">
+    <div class="titles">
+      <div class="country" id="country" data-i18n="locating">Locating…</div>
+      <div class="city" id="city">—</div>
+    </div>
+    <button class="icon-btn" id="refresh" data-i18n-title="refresh" title="Refresh">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
+    </button>
+  </header>
+
+  <p class="error" id="geo-error" hidden></p>
+
+  <section class="card">
+    <h2 data-i18n="network">Network</h2>
+    <div class="row"><span data-i18n="publicIp">Public IP</span><button class="value mono copy" id="ip" data-i18n-title="copyIp" title="Click to copy">—</button></div>
+    <div class="row"><span data-i18n="isp">ISP</span><span class="value" id="isp">—</span></div>
+    <div class="row"><span data-i18n="timezone">Timezone</span><span class="value" id="timezone">—</span></div>
+    <div class="row" id="connection-row" hidden><span data-i18n="connection">Connection</span><span class="value" id="connection">—</span></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="speed">Speed</h2>
+    <div class="row"><span data-i18n="latency">Latency</span><span class="value" id="latency">—</span></div>
+    <div class="row"><span data-i18n="download">Download</span><span class="value" id="download">—</span></div>
+    <div class="row"><span data-i18n="upload">Upload</span><span class="value" id="upload">—</span></div>
+    <p class="error" id="speed-error" hidden></p>
+    <div class="card-foot">
+      <span class="status" id="speed-status"></span>
+      <button class="btn" id="run-test" data-i18n="runTest">Run test</button>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <button class="link" id="open-settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+      <span data-i18n="settings">Settings</span>
+    </button>
+    <a class="link" href="https://netlane.vercel.app/" target="_blank" rel="noopener" data-i18n="desktopApp">Get the desktop app</a>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

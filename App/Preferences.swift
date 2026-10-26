@@ -30,7 +30,7 @@ final class Preferences {
         speedUnit = SpeedUnit(rawValue: d.string(forKey: "speedUnit") ?? "") ?? .bits
         popoverClosesAutomatically = d.object(forKey: "popoverClosesAutomatically") as? Bool ?? true
         showIPChangeToast = d.object(forKey: "showIPChangeToast") as? Bool ?? true
-        showLiveSpeed = d.object(forKey: "showLiveSpeed") as? Bool ?? false
+        showLiveSpeed = d.object(forKey: "showLiveSpeed") as? Bool ?? true
         buttonStyle = ButtonStyle(rawValue: d.string(forKey: "buttonStyle") ?? "") ?? .doubleLine
         bandwidthData = BandwidthData(rawValue: d.string(forKey: "bandwidthData") ?? "") ?? .both
         uploadOnTop = d.object(forKey: "uploadOnTop") as? Bool ?? false

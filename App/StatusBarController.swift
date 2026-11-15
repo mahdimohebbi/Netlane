@@ -12,6 +12,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private var toast: NSPanel?
     private var toastDismiss: DispatchWorkItem?
     private var settingsWindow: NSWindow?
+    private var statisticsWindow: NSWindow?
 
     init(model: AppModel, prefs: Preferences, updater: Updater) {
         self.model = model
@@ -19,9 +20,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         self.updater = updater
         super.init()
 
-        let hosting = NSHostingController(rootView: PopoverView(model: model, prefs: prefs, updater: updater) { [weak self] in
-            self?.showSettings()
-        })
+        let hosting = NSHostingController(rootView: PopoverView(model: model, prefs: prefs, updater: updater,
+                                                         openSettings: { [weak self] in self?.showSettings() },
+                                                         openStatistics: { [weak self] in self?.showStatistics() }))
         hosting.sizingOptions = .preferredContentSize
         popover.contentViewController = hosting
         popover.delegate = self
@@ -49,7 +50,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     private func updateStatusItem() {
         guard let button = statusItem.button else { return }
-        model.setTrafficMonitoring(prefs.showLiveSpeed)
+        model.setTrafficMonitoring(true) // always on: statistics are recorded even when the menu bar speed is hidden
         popover.behavior = prefs.popoverClosesAutomatically ? .transient : .applicationDefined
         button.title = model.menuBarLabel
         button.image = prefs.showLiveSpeed ? speedImage() : nil
@@ -146,6 +147,22 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         NSAnimationContext.runAnimationGroup({ $0.duration = 0.25; panel.animator().alphaValue = 0 }) {
             panel.orderOut(nil)
         }
+    }
+
+    // MARK: Statistics
+
+    func showStatistics() {
+        popover.performClose(nil)
+        if statisticsWindow == nil {
+            let window = NSWindow(contentViewController: NSHostingController(rootView: StatisticsView(model: model, prefs: prefs, selection: StatisticsSelection())))
+            window.title = "Netlane Statistics"
+            window.styleMask = [.titled, .closable, .miniaturizable]
+            window.isReleasedWhenClosed = false
+            window.center()
+            statisticsWindow = window
+        }
+        NSApp.activate()
+        statisticsWindow?.makeKeyAndOrderFront(nil)
     }
 
     // MARK: Settings

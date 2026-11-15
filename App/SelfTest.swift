@@ -67,6 +67,52 @@ enum SelfTest {
         check((try? Updater.parseRelease(Data(#"{"tag_name":"v9","html_url":"https://x.y","assets":[]}"#.utf8))) == nil,
               "update: release without a DMG is ignored")
 
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        func at(_ d: Int, _ h: Int, _ m: Int = 30) -> Date {
+            cal.date(from: DateComponents(year: 2026, month: 11, day: d, hour: h, minute: m))!
+        }
+        let now = at(15, 21)
+        var log = TrafficLog()
+        log.add(rx: 100, tx: 10, at: at(15, 21, 5), calendar: cal)
+        log.add(rx: 50, tx: 5, at: at(15, 21, 55), calendar: cal)   // same hour: merged
+        log.add(rx: 7, tx: 1, at: at(15, 3), calendar: cal)         // earlier hour, inserted before
+        log.add(rx: 1000, tx: 100, at: at(14, 12), calendar: cal)   // yesterday
+        log.add(rx: 0, tx: 0, at: at(15, 22), calendar: cal)        // nothing to record
+        check(log.entries.count == 3 && log.entries == log.entries.sorted { $0.t < $1.t }, "traffic: hours merge and stay sorted")
+        let day = log.buckets(.day, now: now, calendar: cal)
+        check(day.count == 24 && day[21].rx == 150 && day[21].tx == 15 && day[3].rx == 7 && day[0].total == 0, "traffic: day = 24 hourly buckets")
+        let week = log.buckets(.week, now: now, calendar: cal)
+        check(week.count == 7 && week[6].rx == 157 && week[5].rx == 1000 && week[0].total == 0, "traffic: week = 7 daily buckets, today last")
+        check(log.buckets(.month, now: now, calendar: cal).count == 30, "traffic: month = 30 daily buckets")
+        check(log.total(from: at(15, 0, 0), to: at(16, 0, 0)).rx == 157, "traffic: total in range")
+        check((try? JSONDecoder().decode(TrafficLog.self, from: JSONEncoder().encode(log))) == log, "traffic: log survives encode/decode")
+        let csvLines = log.csv().split(separator: "\n")
+        check(csvLines.count == 4 && csvLines[0] == "hour_start,downloaded_bytes,uploaded_bytes" && csvLines[3].hasSuffix(",150,15"), "traffic: csv export")
+        var old = TrafficLog()
+        old.add(rx: 5, tx: 5, at: cal.date(byAdding: .day, value: -400, to: now)!, calendar: cal)
+        old.add(rx: 6, tx: 6, at: cal.date(byAdding: .day, value: -30, to: now)!, calendar: cal)
+        old.prune(now: now, calendar: cal)
+        check(old.entries.count == 1 && old.entries[0].rx == 6, "traffic: entries older than 12 months are pruned")
+
+        let statsFile = FileManager.default.temporaryDirectory.appendingPathComponent("netlane-selftest-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: statsFile) }
+        MainActor.assumeIsolated {
+            let stats = TrafficStats(fileURL: statsFile)
+            for _ in 0..<75 { stats.record(rx: 1_000_000, tx: 200_000, elapsed: 1) }
+            check(stats.live.count == 60 && stats.live.last?.id == 75, "traffic: live window keeps the last 60 samples")
+            check(stats.sessionRx == 75_000_000 && stats.sessionTx == 15_000_000, "traffic: session totals")
+            check(abs(stats.peakDown - 1_000_000) < 1 && abs(stats.live[0].up - 200_000) < 1, "traffic: rates and peaks")
+            stats.record(rx: 9_000_000_000, tx: 0, elapsed: 3600) // woke from sleep: counters can't be trusted
+            check(stats.sessionRx == 75_000_000 && stats.log.entries.reduce(0, { $0 + $1.rx }) == 75_000_000, "traffic: long gaps are not counted")
+            stats.save()
+            let reloaded = TrafficStats(fileURL: statsFile)
+            check(reloaded.log.entries.reduce(0, { $0 + $1.rx }) == 75_000_000, "traffic: history persists across launches")
+            reloaded.clearHistory()
+            check(TrafficStats(fileURL: statsFile).log.entries.isEmpty, "traffic: clear history")
+        }
+        check(ByteFormat.string(0) == "0 B" && ByteFormat.string(6_410_000_000).hasSuffix("GB"), "traffic: byte formatting")
+
         let fallback = GeoClient { url in
             if url == GeoClient.primaryURL { throw URLError(.timedOut) }
             return Data(ipapiSample.utf8)

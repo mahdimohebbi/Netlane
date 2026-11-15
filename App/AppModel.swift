@@ -30,6 +30,7 @@ final class AppModel {
     var downloadRate: Double = 0
     var uploadRate: Double = 0
     var onIPChange: ((GeoInfo, GeoInfo) -> Void)?
+    let stats = TrafficStats()
 
     private let client = GeoClient()
     private let monitor = NWPathMonitor()
@@ -147,6 +148,7 @@ final class AppModel {
         guard elapsed > 0 else { return }
         downloadRate = Double(rx) / elapsed
         uploadRate = Double(tx) / elapsed
+        stats.record(rx: rx, tx: tx, elapsed: elapsed, at: now)
     }
 
     /// Byte counters for physical interfaces only, so VPN tunnels aren't counted twice.

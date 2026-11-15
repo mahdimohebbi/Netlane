@@ -5,6 +5,7 @@ struct PopoverView: View {
     let prefs: Preferences
     let updater: Updater
     let openSettings: () -> Void
+    let openStatistics: () -> Void
     private var copied: Bool { model.ipCopied }
 
     var body: some View {
@@ -12,6 +13,7 @@ struct PopoverView: View {
             UpdateBanner(updater: updater)
             header
             networkCard
+            StatisticsCard(model: model, prefs: prefs, open: openStatistics)
             speedCard
             footer
         }

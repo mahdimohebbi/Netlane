@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     let model: AppModel
     @Bindable var prefs: Preferences
+    let updater: Updater
 
     var body: some View {
         Form {
@@ -25,6 +26,23 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.radioGroup)
                 .horizontalRadioGroupLayout()
+            }
+
+            Section("Updates") {
+                Toggle("Automatically check for updates", isOn: $prefs.checkForUpdates)
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Version \(updater.currentVersion)")
+                        Text(updateStatus).font(.caption).foregroundStyle(updateStatusIsError ? .orange : .secondary)
+                    }
+                    Spacer()
+                    if let release = updater.latest, !updater.isBusy {
+                        Button("Update to \(release.version)") { Task { await updater.install(release) } }
+                    } else {
+                        Button("Check for Updates") { Task { await updater.check(userInitiated: true) } }
+                            .disabled(updater.isBusy)
+                    }
+                }
             }
 
             Section("Menu Bar") {
@@ -57,6 +75,23 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var updateStatusIsError: Bool {
+        if case .failed = updater.state { return true }
+        return false
+    }
+
+    private var updateStatus: String {
+        switch updater.state {
+        case .idle: "Not checked yet"
+        case .checking: "Checking…"
+        case .upToDate: "Netlane is up to date"
+        case .available(let release): "Version \(release.version) is available"
+        case .downloading(let fraction): "Downloading… \(Int(fraction * 100))%"
+        case .installing: "Installing…"
+        case .failed(let message): message
+        }
     }
 
     private func colorBinding(_ keyPath: ReferenceWritableKeyPath<Preferences, String>) -> Binding<Color> {

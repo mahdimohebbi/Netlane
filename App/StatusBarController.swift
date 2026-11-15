@@ -6,18 +6,20 @@ import SwiftUI
 final class StatusBarController: NSObject, NSPopoverDelegate {
     private let model: AppModel
     private let prefs: Preferences
+    private let updater: Updater
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private var toast: NSPanel?
     private var toastDismiss: DispatchWorkItem?
     private var settingsWindow: NSWindow?
 
-    init(model: AppModel, prefs: Preferences) {
+    init(model: AppModel, prefs: Preferences, updater: Updater) {
         self.model = model
         self.prefs = prefs
+        self.updater = updater
         super.init()
 
-        let hosting = NSHostingController(rootView: PopoverView(model: model, prefs: prefs) { [weak self] in
+        let hosting = NSHostingController(rootView: PopoverView(model: model, prefs: prefs, updater: updater) { [weak self] in
             self?.showSettings()
         })
         hosting.sizingOptions = .preferredContentSize
@@ -51,7 +53,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popover.behavior = prefs.popoverClosesAutomatically ? .transient : .applicationDefined
         button.title = model.menuBarLabel
         button.image = prefs.showLiveSpeed ? speedImage() : nil
-        button.toolTip = model.lastGeo.map { "\($0.country) · \($0.ip)" } ?? "Netlane"
+        let tip = model.lastGeo.map { "\($0.country) · \($0.ip)" } ?? "Netlane"
+        button.toolTip = updater.latest.map { "\(tip)\nUpdate available: \($0.version)" } ?? tip
     }
 
     private func speedImage() -> NSImage {
@@ -150,7 +153,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     func showSettings() {
         popover.performClose(nil)
         if settingsWindow == nil {
-            let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model, prefs: prefs)))
+            let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model, prefs: prefs, updater: updater)))
             window.title = "Netlane Settings"
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false

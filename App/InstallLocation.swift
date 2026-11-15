@@ -85,7 +85,7 @@ enum InstallLocation {
 
     // MARK: - Install
 
-    private static func install(from source: URL, to destination: URL) throws {
+    static func install(from source: URL, to destination: URL) throws {
         let fm = FileManager.default
         do {
             if fm.fileExists(atPath: destination.path) {
@@ -128,7 +128,7 @@ enum InstallLocation {
     // MARK: - Relaunch
 
     /// Waits for this process to exit, opens the installed copy, then ejects the disk image we came from.
-    private static func relaunch(_ app: URL, ejecting volume: URL?) {
+    static func relaunch(_ app: URL, ejecting volume: URL?) {
         let pid = ProcessInfo.processInfo.processIdentifier
         var script = "while /bin/kill -0 \(pid) 2>/dev/null; do /bin/sleep 0.2; done; /usr/bin/open \"$1\""
         var args = ["-c", "", "netlane-relaunch", app.path]

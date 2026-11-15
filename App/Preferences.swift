@@ -20,6 +20,8 @@ final class Preferences {
     var buttonStyle: ButtonStyle { didSet { save(buttonStyle.rawValue, "buttonStyle") } }
     var bandwidthData: BandwidthData { didSet { save(bandwidthData.rawValue, "bandwidthData") } }
     var uploadOnTop: Bool { didSet { save(uploadOnTop, "uploadOnTop") } }
+    var checkForUpdates: Bool { didSet { save(checkForUpdates, "checkForUpdates") } }
+    var skippedUpdateVersion: String { didSet { save(skippedUpdateVersion, "skippedUpdateVersion") } }
     var customColors: Bool { didSet { save(customColors, "customColors") } }
     var downloadColorHex: String { didSet { save(downloadColorHex, "downloadColorHex") } }
     var uploadColorHex: String { didSet { save(uploadColorHex, "uploadColorHex") } }
@@ -34,6 +36,8 @@ final class Preferences {
         buttonStyle = ButtonStyle(rawValue: d.string(forKey: "buttonStyle") ?? "") ?? .doubleLine
         bandwidthData = BandwidthData(rawValue: d.string(forKey: "bandwidthData") ?? "") ?? .both
         uploadOnTop = d.object(forKey: "uploadOnTop") as? Bool ?? false
+        checkForUpdates = d.object(forKey: "checkForUpdates") as? Bool ?? true
+        skippedUpdateVersion = d.string(forKey: "skippedUpdateVersion") ?? ""
         customColors = d.object(forKey: "customColors") as? Bool ?? false
         downloadColorHex = d.string(forKey: "downloadColorHex") ?? "#34C759"
         uploadColorHex = d.string(forKey: "uploadColorHex") ?? "#0A84FF"

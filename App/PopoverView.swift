@@ -3,11 +3,13 @@ import SwiftUI
 struct PopoverView: View {
     let model: AppModel
     let prefs: Preferences
+    let updater: Updater
     let openSettings: () -> Void
     private var copied: Bool { model.ipCopied }
 
     var body: some View {
         VStack(spacing: 12) {
+            UpdateBanner(updater: updater)
             header
             networkCard
             speedCard
@@ -155,4 +157,51 @@ private struct Row<Value: View>: View {
 
 private extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
+}
+
+/// Shown at the top of the popup when a newer version exists, while it downloads, or when an update failed.
+struct UpdateBanner: View {
+    let updater: Updater
+
+    var body: some View {
+        switch updater.state {
+        case .available(let release):
+            banner(icon: "arrow.down.circle.fill", tint: .blue, title: "Netlane \(release.version) is available") {
+                Button("Update") { Task { await updater.install(release) } }.controlSize(.small)
+            }
+        case .downloading(let fraction):
+            banner(icon: "arrow.down.circle", tint: .blue, title: "Downloading update…") {
+                ProgressView(value: fraction).frame(width: 70)
+            }
+        case .installing:
+            banner(icon: "arrow.triangle.2.circlepath", tint: .blue, title: "Installing update…") {
+                ProgressView().controlSize(.small)
+            }
+        case .failed(let message) where updater.latest != nil:
+            VStack(alignment: .leading, spacing: 6) {
+                Label(message, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange)
+                HStack {
+                    Button("Try Again") { Task { await updater.installLatest() } }
+                    if let page = updater.latest?.pageURL { Button("Release Page") { NSWorkspace.shared.open(page) } }
+                }
+                .controlSize(.small)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        default:
+            EmptyView()
+        }
+    }
+
+    private func banner<Trailing: View>(icon: String, tint: Color, title: String, @ViewBuilder trailing: () -> Trailing) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon).foregroundStyle(tint)
+            Text(title).font(.callout.weight(.medium))
+            Spacer()
+            trailing()
+        }
+        .padding(10)
+        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
 }

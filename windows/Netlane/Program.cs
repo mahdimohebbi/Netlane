@@ -3,8 +3,10 @@ namespace Netlane;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
+        // After a self-update the new copy starts while the old one is still exiting; wait so the single-instance check passes.
+        Updater.HandleStartup(args);
         using var mutex = new Mutex(true, "Netlane.SingleInstance", out var isFirst);
         if (!isFirst) return;
 

@@ -49,6 +49,24 @@ enum SelfTest {
         check(Preferences.formatRate(bytesPerSecond: 250_000_000, unit: .bits) == "2.0 Gb/s", "rate 2 Gb/s")
         check(NSColor(hex: "#34C759")?.hexString == "#34C759", "color hex round trip")
 
+        check(Updater.isNewer("1.3", than: "1.2"), "update: 1.3 > 1.2")
+        check(Updater.isNewer("1.10", than: "1.9"), "update: 1.10 > 1.9 (numeric)")
+        check(Updater.isNewer("v2.0.0", than: "1.9.9"), "update: tag prefix v")
+        check(!Updater.isNewer("1.2.0", than: "1.2"), "update: 1.2.0 == 1.2")
+        check(!Updater.isNewer("1.1", than: "1.2"), "update: older is not newer")
+        check(!Updater.isNewer("", than: "1.2"), "update: empty version")
+        let releaseJSON = """
+        {"tag_name":"v1.3","html_url":"https://github.com/mahdimohebbi/Netlane/releases/tag/v1.3","body":"## What's new\\n- **Faster**\\n\\n## Downloads\\n| x |",\
+        "assets":[{"name":"Netlane-win-x64.zip","browser_download_url":"https://github.com/x/win.zip","digest":"sha256:AA"},\
+        {"name":"Netlane.dmg","browser_download_url":"https://github.com/x/Netlane.dmg","digest":"sha256:ABCDEF"}]}
+        """
+        let release = try? Updater.parseRelease(Data(releaseJSON.utf8))
+        check(release?.version == "1.3" && release?.dmgURL.lastPathComponent == "Netlane.dmg"
+              && release?.sha256 == "abcdef", "update: parse release picks the DMG and its digest")
+        check(Updater.summary(of: release?.notes ?? "") == "Faster", "update: release notes summary")
+        check((try? Updater.parseRelease(Data(#"{"tag_name":"v9","html_url":"https://x.y","assets":[]}"#.utf8))) == nil,
+              "update: release without a DMG is ignored")
+
         let fallback = GeoClient { url in
             if url == GeoClient.primaryURL { throw URLError(.timedOut) }
             return Data(ipapiSample.utf8)

@@ -7,6 +7,9 @@ public sealed class TrayApp : ApplicationContext
 {
     private readonly AppSettings _settings = AppSettings.Load();
     private readonly AppState _state = new();
+    private readonly Updater _updater;
+    private readonly ToolStripMenuItem _updateItem = new() { Visible = false };
+    private bool _updateBalloon;
     private readonly NotifyIcon _tray = new();
     private readonly Icon? _appIcon = LoadAppIcon();
     private readonly PopupForm _popup;
@@ -19,10 +22,13 @@ public sealed class TrayApp : ApplicationContext
 
     public TrayApp()
     {
+        _updater = new Updater(_settings);
         _popup = new PopupForm(_state, _settings, ShowSettings);
         _popup.CreateControl();
 
         var menu = new ContextMenuStrip();
+        _updateItem.Click += async (_, _) => await InstallUpdateAsync();
+        menu.Items.Add(_updateItem);
         menu.Items.Add("Open Netlane", null, (_, _) => ShowPopup());
         menu.Items.Add("Refresh", null, async (_, _) => await _state.RefreshAsync());
         menu.Items.Add("Settings…", null, (_, _) => ShowSettings());
@@ -33,7 +39,11 @@ public sealed class TrayApp : ApplicationContext
         _tray.Text = "Netlane";
         _tray.ContextMenuStrip = menu;
         _tray.MouseUp += (_, e) => { if (e.Button == MouseButtons.Left) TogglePopup(); };
-        _tray.BalloonTipClicked += (_, _) => ShowPopup();
+        _tray.BalloonTipClicked += async (_, _) =>
+        {
+            if (_updateBalloon) await InstallUpdateAsync();
+            else ShowPopup();
+        };
         _tray.Visible = true;
 
         Application.ApplicationExit += (_, _) => _tray.Visible = false;
@@ -42,6 +52,48 @@ public sealed class TrayApp : ApplicationContext
         _settings.Changed += ApplySettings;
         ApplySettings();
         _state.Start();
+
+        _updater.Changed += OnUpdaterChanged;
+        _updater.UpdateFound += release =>
+        {
+            _updateBalloon = true;
+            _tray.ShowBalloonTip(8000, $"Netlane {release.Version} is available", "Click to update now.", ToolTipIcon.Info);
+        };
+        _updater.Start();
+    }
+
+    private void OnUpdaterChanged()
+    {
+        var latest = _updater.Latest?.Version;
+        _updateItem.Visible = latest is not null;
+        _updateItem.Enabled = !_updater.IsBusy;
+        _updateItem.Text = _updater.State switch
+        {
+            UpdateState.Downloading => $"Downloading update… {_updater.Progress}%",
+            UpdateState.Installing => "Installing update…",
+            _ => $"Update to {latest}…",
+        };
+    }
+
+    private bool _installing;
+
+    private async Task InstallUpdateAsync()
+    {
+        if (_installing || _updater.Latest is not { } release) return;
+        _installing = true;
+        try
+        {
+            if (await _updater.InstallAsync())
+            {
+                ExitThread();
+                return;
+            }
+            if (_updater.State == UpdateState.Failed
+                && MessageBox.Show($"{_updater.Error}\n\nOpen the release page to download it manually?", "Netlane update",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(release.PageUrl.ToString()) { UseShellExecute = true });
+        }
+        finally { _installing = false; }
     }
 
     private static Icon? LoadAppIcon()
@@ -63,7 +115,7 @@ public sealed class TrayApp : ApplicationContext
     {
         if (_settingsForm is null || _settingsForm.IsDisposed)
         {
-            _settingsForm = new SettingsForm(_settings, _appIcon);
+            _settingsForm = new SettingsForm(_settings, _updater, InstallUpdateAsync, _appIcon);
             _settingsForm.FormClosed += (_, _) => _settingsForm = null;
             _settingsForm.Show();
         }
@@ -167,11 +219,13 @@ public sealed class TrayApp : ApplicationContext
         var sameCountry = old.CountryCode == now.CountryCode;
         var title = sameCountry ? "IP address changed" : $"Now in {now.Country}";
         var text = $"{old.Ip} → {now.Ip}" + (sameCountry ? "" : $"\nwas {old.Country}");
+        _updateBalloon = false;
         _tray.ShowBalloonTip(5000, title, text, ToolTipIcon.Info);
     }
 
     protected override void ExitThreadCore()
     {
+        _updater.Stop();
         _tray.Visible = false;
         _tray.Dispose();
         _trayIcon?.Dispose();

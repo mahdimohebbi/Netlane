@@ -20,6 +20,7 @@ public sealed class AppSettings
     public SpeedUnit Unit { get; set; } = SpeedUnit.Bits;
     public bool PopupClosesAutomatically { get; set; } = true;
     public bool ShowIpChangeToast { get; set; } = true;
+    public bool CheckForUpdates { get; set; } = true;
     public bool ShowSpeedOverlay { get; set; } = true;
     public bool DoubleLine { get; set; } = true;
     public BandwidthData Bandwidth { get; set; } = BandwidthData.Both;

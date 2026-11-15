@@ -44,6 +44,23 @@ Check(Throughput.FormatRate(512, SpeedUnit.Bytes) == "512 B/s", "rate 512 B/s");
 Check(Throughput.FormatRate(250_000_000, SpeedUnit.Bits) == "2.0 Gb/s", "rate 2.0 Gb/s");
 Check(Throughput.FormatMbps(80, SpeedUnit.Bytes) == "10.0 MB/s", "speed test MB/s");
 
+Check(UpdateChecker.IsNewer("1.3", "1.2"), "update: 1.3 > 1.2");
+Check(UpdateChecker.IsNewer("1.10", "1.9"), "update: 1.10 > 1.9 (numeric)");
+Check(UpdateChecker.IsNewer("v2.0.0", "1.9.9"), "update: tag prefix v");
+Check(!UpdateChecker.IsNewer("1.2.0", "1.2"), "update: 1.2.0 == 1.2");
+Check(!UpdateChecker.IsNewer("1.1", "1.2"), "update: older is not newer");
+Check(!UpdateChecker.IsNewer("", "1.2"), "update: empty version");
+const string releaseJson = """
+    {"tag_name":"v1.3","html_url":"https://github.com/mahdimohebbi/Netlane/releases/tag/v1.3","assets":[
+    {"name":"Netlane.dmg","browser_download_url":"https://github.com/x/Netlane.dmg","digest":"sha256:AA"},
+    {"name":"Netlane-win-x64.zip","browser_download_url":"https://github.com/x/Netlane-win-x64.zip","digest":"sha256:ABCDEF"}]}
+    """;
+var rel = UpdateChecker.ParseRelease(releaseJson, "Netlane-win-x64.zip");
+Check(rel is { Version: "1.3", Sha256: "abcdef" } && rel.DownloadUrl.AbsolutePath.EndsWith("Netlane-win-x64.zip"), "update: parse release picks this platform's zip and digest");
+Check(UpdateChecker.ParseRelease(releaseJson, "Netlane-win-arm64.zip") is null, "update: release without a matching build is ignored");
+Check(await UpdateChecker.CheckAsync("1.2", "Netlane-win-x64.zip", default, (_, _) => Task.FromResult(releaseJson)) is not null, "update: newer release is offered");
+Check(await UpdateChecker.CheckAsync("1.3", "Netlane-win-x64.zip", default, (_, _) => Task.FromResult(releaseJson)) is null, "update: same version is not offered");
+
 var fallback = new GeoClient((url, _) => url == GeoClient.PrimaryUrl
     ? throw new HttpRequestException("timed out")
     : Task.FromResult(ipapiSample));

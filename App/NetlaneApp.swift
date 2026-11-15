@@ -17,10 +17,15 @@ enum Launcher {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: StatusBarController?
+    private var updater: Updater?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if InstallLocation.moveToApplicationsIfNeeded() { return }
-        controller = StatusBarController(model: AppModel(), prefs: Preferences())
+        let prefs = Preferences()
+        let updater = Updater(prefs: prefs)
+        self.updater = updater
+        controller = StatusBarController(model: AppModel(), prefs: prefs, updater: updater)
+        updater.start()
     }
 
     // The widget's tap opens netlane://open.

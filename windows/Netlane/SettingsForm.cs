@@ -5,6 +5,10 @@ namespace Netlane;
 public sealed class SettingsForm : Form
 {
     private readonly AppSettings _settings;
+    private readonly Updater _updater;
+    private readonly Label _updateStatus = new() { AutoSize = true, Margin = new Padding(0, 6, 12, 0), MaximumSize = new Size(420, 0) };
+    private readonly Button _updateButton = new() { AutoSize = true, Margin = new Padding(0, 2, 0, 2) };
+    private readonly Func<Task> _installUpdate;
     private readonly FlowLayoutPanel _root = new()
     {
         FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Padding = new Padding(18, 12, 18, 18),
@@ -14,9 +18,11 @@ public sealed class SettingsForm : Form
     private readonly List<Control> _widgetControls = [];
     private CheckBox? _uploadOnTop;
 
-    public SettingsForm(AppSettings settings, Icon? icon)
+    public SettingsForm(AppSettings settings, Updater updater, Func<Task> installUpdate, Icon? icon)
     {
         _settings = settings;
+        _updater = updater;
+        _installUpdate = installUpdate;
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
         Text = "Netlane Settings";
@@ -39,6 +45,20 @@ public sealed class SettingsForm : Form
         Check("Show a notification when the IP address changes", settings.ShowIpChangeToast, v => settings.ShowIpChangeToast = v);
         Radios("Theme", [("System", ThemeMode.System), ("Light", ThemeMode.Light), ("Dark", ThemeMode.Dark)], settings.Theme, v => settings.Theme = v);
         Radios("Unit (Bits or Bytes)", [("Mb/s", SpeedUnit.Bits), ("MB/s", SpeedUnit.Bytes)], settings.Unit, v => settings.Unit = v);
+
+        Section("Updates");
+        Check("Automatically check for updates", settings.CheckForUpdates, v => settings.CheckForUpdates = v);
+        var update = Row();
+        update.Controls.Add(_updateStatus);
+        update.Controls.Add(_updateButton);
+        _root.Controls.Add(update);
+        _updateButton.Click += async (_, _) =>
+        {
+            if (_updater.State == UpdateState.Available) await _installUpdate();
+            else await _updater.CheckAsync(userInitiated: true);
+        };
+        updater.Changed += OnUpdaterChanged;
+        OnUpdaterChanged();
 
         Section("Live speed");
         Check("Show live upload & download speed near the taskbar", settings.ShowSpeedOverlay, v => settings.ShowSpeedOverlay = v);
@@ -69,8 +89,26 @@ public sealed class SettingsForm : Form
         Theme.StyleWindow(Handle, Theme.Current(_settings).Dark, round: false);
     }
 
+    private void OnUpdaterChanged()
+    {
+        if (IsDisposed) return;
+        _updateStatus.Text = _updater.State switch
+        {
+            UpdateState.Checking => $"Version {Updater.CurrentVersion} · Checking…",
+            UpdateState.UpToDate => $"Version {Updater.CurrentVersion} · Netlane is up to date",
+            UpdateState.Available => $"Version {Updater.CurrentVersion} · {_updater.Latest?.Version} is available",
+            UpdateState.Downloading => $"Downloading… {_updater.Progress}%",
+            UpdateState.Installing => "Installing…",
+            UpdateState.Failed => _updater.Error ?? "Update failed",
+            _ => $"Version {Updater.CurrentVersion}",
+        };
+        _updateButton.Text = _updater.State == UpdateState.Available ? $"Update to {_updater.Latest?.Version}" : "Check for updates";
+        _updateButton.Enabled = !_updater.IsBusy;
+    }
+
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        _updater.Changed -= OnUpdaterChanged;
         _settings.Changed -= OnSettingsChanged;
         base.OnFormClosed(e);
     }

@@ -11,7 +11,7 @@ public sealed class AppState : IDisposable
     private readonly System.Windows.Forms.Timer _refreshTimer = new() { Interval = 5 * 60 * 1000 };
     private readonly System.Windows.Forms.Timer _debounce = new() { Interval = 2000 };
     private readonly System.Windows.Forms.Timer _trafficTimer = new() { Interval = 1000 };
-    private (long Rx, long Tx) _lastCounters;
+    private Dictionary<string, (long Rx, long Tx)> _lastCounters = [];
     private DateTime _lastSample;
 
     public GeoInfo? Geo { get; private set; }
@@ -19,6 +19,7 @@ public sealed class AppState : IDisposable
     public bool IsRefreshing { get; private set; }
     public bool IsOnline { get; private set; } = true;
     public LocalNetwork Local { get; private set; } = new("—", "—", [], false);
+    public TrafficStats Stats { get; } = new();
     public double DownloadRate { get; private set; }
     public double UploadRate { get; private set; }
     public string SpeedPhase { get; private set; } = "";
@@ -84,7 +85,7 @@ public sealed class AppState : IDisposable
         DownloadRate = UploadRate = 0;
         if (enabled)
         {
-            _lastCounters = NetworkInfo.TrafficCounters();
+            _lastCounters = NetworkInfo.TrafficCountersByInterface();
             _lastSample = DateTime.UtcNow;
             _trafficTimer.Start();
         }
@@ -97,13 +98,17 @@ public sealed class AppState : IDisposable
     private void SampleTraffic()
     {
         var now = DateTime.UtcNow;
-        var counters = NetworkInfo.TrafficCounters();
+        var counters = NetworkInfo.TrafficCountersByInterface();
         var seconds = (now - _lastSample).TotalSeconds;
-        // Counters drop when an adapter disappears; treat that sample as zero rather than negative.
-        DownloadRate = seconds > 0 ? Math.Max(0, counters.Received - _lastCounters.Rx) / seconds : 0;
-        UploadRate = seconds > 0 ? Math.Max(0, counters.Sent - _lastCounters.Tx) / seconds : 0;
-        _lastCounters = (counters.Received, counters.Sent);
+        var (rx, tx) = Throughput.Delta(_lastCounters, counters);
+        _lastCounters = counters;
         _lastSample = now;
+        if (seconds > 0)
+        {
+            DownloadRate = rx / seconds;
+            UploadRate = tx / seconds;
+            Stats.Record(rx, tx, seconds);
+        }
         Changed?.Invoke();
     }
 

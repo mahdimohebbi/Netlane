@@ -22,6 +22,21 @@ public enum SpeedUnit { Bits, Bytes }
 
 public static class Throughput
 {
+    /// Bytes moved since the previous reading, summed over interfaces present in both. A new interface
+    /// (its counters start from its whole lifetime) or a counter that went backwards contributes nothing.
+    public static (ulong Rx, ulong Tx) Delta(
+        IReadOnlyDictionary<string, (long Rx, long Tx)> previous, IReadOnlyDictionary<string, (long Rx, long Tx)> current)
+    {
+        ulong rx = 0, tx = 0;
+        foreach (var (id, now) in current)
+        {
+            if (!previous.TryGetValue(id, out var before)) continue;
+            if (now.Rx > before.Rx) rx += (ulong)(now.Rx - before.Rx);
+            if (now.Tx > before.Tx) tx += (ulong)(now.Tx - before.Tx);
+        }
+        return (rx, tx);
+    }
+
     public static double Mbps(long bytes, double seconds) =>
         seconds > 0 && bytes > 0 ? bytes * 8.0 / seconds / 1_000_000 : 0;
 

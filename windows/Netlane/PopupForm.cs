@@ -9,6 +9,7 @@ public sealed class PopupForm : Form
     private readonly AppState _state;
     private readonly AppSettings _settings;
     private readonly Action _openSettings;
+    private readonly Action _openStatistics;
     private Palette _palette;
 
     private readonly PictureBox _flag = new() { Size = new Size(56, 42), Margin = new Padding(0, 0, 12, 0) };
@@ -29,17 +30,22 @@ public sealed class PopupForm : Form
     private readonly Label _speedError = new() { Tag = "warning", Font = Theme.Small, AutoSize = true, Visible = false };
     private readonly Label _speedStatus = new() { Tag = "secondary", Font = Theme.Small, AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Button _runTest = new() { Text = "Run test", AutoSize = true, Anchor = AnchorStyles.Right };
+    private readonly Label _statsDown = new() { Tag = "down", Font = Theme.Caption, AutoSize = true };
+    private readonly Label _statsUp = new() { Tag = "up", Font = Theme.Caption, AutoSize = true };
+    private readonly Label _statsToday = new() { Tag = "secondary", Font = Theme.Small, AutoSize = true };
+    private readonly Sparkline _spark = new() { Margin = new Padding(0, 0, 0, 2) };
     private readonly List<Card> _cards = [];
     private DateTime _copiedUntil;
     private readonly System.Windows.Forms.Timer _copiedTimer = new() { Interval = 1200 };
 
     public DateTime LastHidden { get; private set; }
 
-    public PopupForm(AppState state, AppSettings settings, Action openSettings)
+    public PopupForm(AppState state, AppSettings settings, Action openSettings, Action openStatistics)
     {
         _state = state;
         _settings = settings;
         _openSettings = openSettings;
+        _openStatistics = openStatistics;
         _palette = Theme.Current(settings);
 
         AutoScaleDimensions = new SizeF(96F, 96F);
@@ -58,6 +64,7 @@ public sealed class PopupForm : Form
         var root = Column();
         root.Controls.Add(BuildHeader());
         root.Controls.Add(BuildNetworkCard());
+        root.Controls.Add(BuildStatisticsCard());
         root.Controls.Add(BuildSpeedCard());
         root.Controls.Add(BuildFooter());
         Controls.Add(root);
@@ -154,6 +161,14 @@ public sealed class PopupForm : Form
         _dns.Text = _state.Local.DnsServers.Count > 0 ? string.Join("\n", _state.Local.DnsServers) : "—";
         _timezone.Text = string.IsNullOrEmpty(geo?.Timezone) ? "—" : geo.Timezone;
 
+        var stats = _state.Stats;
+        _statsDown.Text = "↓ " + Throughput.FormatRate(_state.DownloadRate, _settings.Unit);
+        _statsUp.Text = "↑ " + Throughput.FormatRate(_state.UploadRate, _settings.Unit);
+        var today = stats.TotalToday();
+        _statsToday.Text = $"Today {ByteFormat.Format(today.Rx)} ↓ · {ByteFormat.Format(today.Tx)} ↑";
+        _spark.Samples = stats.Live.ToArray();
+        _spark.Invalidate();
+
         var speed = _state.Speed;
         _latency.Text = speed?.LatencyMs is { } ms ? $"{ms:0} ms" : "—";
         _download.Text = speed?.DownloadMbps is { } d ? Throughput.FormatMbps(d, _settings.Unit) : "—";
@@ -218,6 +233,31 @@ public sealed class PopupForm : Form
             ("Public IP", _publicIp), ("Local IP", _localIp), ("ISP", _isp),
             ("Connection", connection), ("DNS", _dns), ("Timezone", _timezone),
         ], null);
+    }
+
+    private Control BuildStatisticsCard()
+    {
+        var card = new Card();
+        var table = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, Location = new Point(card.Padding.Left, card.Padding.Top) };
+        FixWidth(table, ContentWidth - card.Padding.Horizontal);
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var heading = new Label { Text = "STATISTICS", Tag = "secondary", Font = Theme.Caption, AutoSize = true, Margin = new Padding(0, 0, 0, 6) };
+        table.Controls.Add(heading, 0, 0);
+        table.SetColumnSpan(heading, 2);
+        var text = Column();
+        text.Controls.Add(_statsDown);
+        text.Controls.Add(_statsUp);
+        text.Controls.Add(_statsToday);
+        table.Controls.Add(text, 0, 1);
+        table.Controls.Add(_spark, 1, 1);
+        var open = new Button { Text = "Open Statistics", AutoSize = true, Margin = new Padding(0, 8, 0, 0) };
+        open.Click += (_, _) => { Hide(); _openStatistics(); };
+        table.Controls.Add(open, 0, 2);
+        table.SetColumnSpan(open, 2);
+        card.Controls.Add(table);
+        _cards.Add(card);
+        return card;
     }
 
     private Control BuildSpeedCard()

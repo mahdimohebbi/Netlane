@@ -61,6 +61,59 @@ Check(UpdateChecker.ParseRelease(releaseJson, "Netlane-win-arm64.zip") is null, 
 Check(await UpdateChecker.CheckAsync("1.2", "Netlane-win-x64.zip", default, (_, _) => Task.FromResult(releaseJson)) is not null, "update: newer release is offered");
 Check(await UpdateChecker.CheckAsync("1.3", "Netlane-win-x64.zip", default, (_, _) => Task.FromResult(releaseJson)) is null, "update: same version is not offered");
 
+var utc = TimeZoneInfo.Utc;
+DateTimeOffset At(int day, int hour, int minute = 30) => new(2026, 11, day, hour, minute, 0, TimeSpan.Zero);
+var now = At(15, 21);
+var log = new TrafficLog();
+log.Add(100, 10, At(15, 21, 5), utc);
+log.Add(50, 5, At(15, 21, 55), utc);   // same hour: merged
+log.Add(7, 1, At(15, 3), utc);         // earlier hour, inserted before
+log.Add(1000, 100, At(14, 12), utc);   // yesterday
+log.Add(0, 0, At(15, 22), utc);        // nothing to record
+Check(log.Entries.Count == 3 && log.Entries.Zip(log.Entries.Skip(1), (a, b) => a.T < b.T).All(x => x), "traffic: hours merge and stay sorted");
+var day = log.Buckets(StatsRange.Day, now, utc);
+Check(day.Count == 24 && day[21] is { Rx: 150, Tx: 15 } && day[3].Rx == 7 && day[0].Total == 0, "traffic: day = 24 hourly buckets");
+var week = log.Buckets(StatsRange.Week, now, utc);
+Check(week.Count == 7 && week[6].Rx == 157 && week[5].Rx == 1000 && week[0].Total == 0, "traffic: week = 7 daily buckets, today last");
+Check(log.Buckets(StatsRange.Month, now, utc).Count == 30, "traffic: month = 30 daily buckets");
+Check(log.Total(At(15, 0, 0), At(16, 0, 0)).Rx == 157, "traffic: total in range");
+Check(TrafficLog.FromJson(log.ToJson()).ToJson() == log.ToJson(), "traffic: log survives save/load");
+Check(TrafficLog.FromJson("not json").Entries.Count == 0, "traffic: corrupt file is ignored");
+var csv = log.ToCsv().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+Check(csv.Length == 4 && csv[0] == "hour_start,downloaded_bytes,uploaded_bytes" && csv[3].EndsWith(",150,15"), "traffic: csv export");
+var old = new TrafficLog();
+old.Add(5, 5, now.AddDays(-400), utc);
+old.Add(6, 6, now.AddDays(-30), utc);
+old.Prune(now);
+Check(old.Entries.Count == 1 && old.Entries[0].Rx == 6, "traffic: entries older than 12 months are pruned");
+var india = TimeZoneInfo.CreateCustomTimeZone("t", TimeSpan.FromMinutes(330), "t", "t");
+var half = new TrafficLog();
+half.Add(1, 1, new DateTimeOffset(2026, 11, 15, 10, 50, 0, TimeSpan.Zero), india); // 16:20 local -> 16:00 local hour
+Check(half.Buckets(StatsRange.Day, new DateTimeOffset(2026, 11, 15, 12, 0, 0, TimeSpan.Zero), india)[16].Rx == 1, "traffic: half-hour time zones get whole local hours");
+Check(ByteFormat.Format(0) == "0 B" && ByteFormat.Format(950_000_000) == "950 MB" && ByteFormat.Format(6_410_000_000) == "6.41 GB" && ByteFormat.Format(512) == "512 B", "traffic: byte formatting");
+
+var before = new Dictionary<string, (long Rx, long Tx)> { ["wifi"] = (1000, 500), ["eth"] = (2000, 100) };
+var after = new Dictionary<string, (long Rx, long Tx)> { ["wifi"] = (3000, 700), ["eth"] = (1500, 100), ["new"] = (9_000_000_000, 9_000_000_000) };
+Check(Throughput.Delta(before, after) == (2000UL, 200UL), "traffic: per-interface delta ignores new adapters and counter resets");
+
+var statsFile = Path.Combine(Path.GetTempPath(), $"netlane-selftest-{Guid.NewGuid():N}.json");
+try
+{
+    var stats = new TrafficStats(statsFile);
+    for (var i = 0; i < 75; i++) stats.Record(1_000_000, 200_000, 1);
+    Check(stats.Live.Count == 60 && stats.Live[^1].Id == 75, "traffic: live window keeps the last 60 samples");
+    Check(stats.SessionRx == 75_000_000 && stats.SessionTx == 15_000_000, "traffic: session totals");
+    Check(Math.Abs(stats.PeakDown - 1_000_000) < 1 && Math.Abs(stats.Live[0].Up - 200_000) < 1, "traffic: rates and peaks");
+    stats.Record(9_000_000_000, 0, 3600); // woke from sleep: counters can't be trusted
+    Check(stats.SessionRx == 75_000_000 && stats.Log.Entries.Sum(e => (long)e.Rx) == 75_000_000, "traffic: long gaps are not counted");
+    stats.Save();
+    Check(new TrafficStats(statsFile).Log.Entries.Sum(e => (long)e.Rx) == 75_000_000, "traffic: history persists across launches");
+    var reloaded = new TrafficStats(statsFile);
+    reloaded.ClearHistory();
+    Check(new TrafficStats(statsFile).Log.Entries.Count == 0, "traffic: clear history");
+}
+finally { File.Delete(statsFile); }
+
 var fallback = new GeoClient((url, _) => url == GeoClient.PrimaryUrl
     ? throw new HttpRequestException("timed out")
     : Task.FromResult(ipapiSample));

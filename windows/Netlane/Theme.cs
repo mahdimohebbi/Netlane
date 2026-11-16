@@ -69,6 +69,8 @@ public static class Theme
                     "secondary" => p.Secondary,
                     "warning" => p.Warning,
                     "accent" => p.Accent,
+                    "down" => ChartColors.DownText(p),
+                    "up" => ChartColors.UpText(p),
                     _ => p.Text,
                 };
                 break;

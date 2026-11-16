@@ -14,6 +14,7 @@ public sealed class TrayApp : ApplicationContext
     private readonly Icon? _appIcon = LoadAppIcon();
     private readonly PopupForm _popup;
     private SettingsForm? _settingsForm;
+    private StatisticsForm? _statisticsForm;
     private SpeedOverlay? _overlay;
     private DesktopWidget? _widget;
     private Icon? _trayIcon;
@@ -23,7 +24,7 @@ public sealed class TrayApp : ApplicationContext
     public TrayApp()
     {
         _updater = new Updater(_settings);
-        _popup = new PopupForm(_state, _settings, ShowSettings);
+        _popup = new PopupForm(_state, _settings, ShowSettings, ShowStatistics);
         _popup.CreateControl();
 
         var menu = new ContextMenuStrip();
@@ -31,6 +32,7 @@ public sealed class TrayApp : ApplicationContext
         menu.Items.Add(_updateItem);
         menu.Items.Add("Open Netlane", null, (_, _) => ShowPopup());
         menu.Items.Add("Refresh", null, async (_, _) => await _state.RefreshAsync());
+        menu.Items.Add("Statistics…", null, (_, _) => ShowStatistics());
         menu.Items.Add("Settings…", null, (_, _) => ShowSettings());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Quit", null, (_, _) => ExitThread());
@@ -47,6 +49,7 @@ public sealed class TrayApp : ApplicationContext
         _tray.Visible = true;
 
         Application.ApplicationExit += (_, _) => _tray.Visible = false;
+        Microsoft.Win32.SystemEvents.SessionEnding += (_, _) => _state.Stats.Save();
         _state.Changed += OnStateChanged;
         _state.IpChanged += OnIpChanged;
         _settings.Changed += ApplySettings;
@@ -111,6 +114,18 @@ public sealed class TrayApp : ApplicationContext
 
     private void ShowPopup() => _popup.ShowNearTray();
 
+    private void ShowStatistics()
+    {
+        if (_statisticsForm is null || _statisticsForm.IsDisposed)
+        {
+            _statisticsForm = new StatisticsForm(_state, _settings, _appIcon);
+            _statisticsForm.FormClosed += (_, _) => _statisticsForm = null;
+            _statisticsForm.Show();
+        }
+        _statisticsForm.WindowState = FormWindowState.Normal;
+        _statisticsForm.Activate();
+    }
+
     private void ShowSettings()
     {
         if (_settingsForm is null || _settingsForm.IsDisposed)
@@ -125,7 +140,7 @@ public sealed class TrayApp : ApplicationContext
 
     private void ApplySettings()
     {
-        _state.SetTrafficMonitoring(_settings.ShowSpeedOverlay);
+        _state.SetTrafficMonitoring(true); // always on: statistics are recorded even when the speed box is hidden
         _popup.ApplyTheme();
 
         if (_settings.ShowSpeedOverlay)
@@ -226,6 +241,8 @@ public sealed class TrayApp : ApplicationContext
     protected override void ExitThreadCore()
     {
         _updater.Stop();
+        _state.Stats.Save();
+        _statisticsForm?.Close();
         _tray.Visible = false;
         _tray.Dispose();
         _trayIcon?.Dispose();

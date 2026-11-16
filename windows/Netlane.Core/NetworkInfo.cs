@@ -83,6 +83,26 @@ public static class NetworkInfo
         return (rx, tx);
     }
 
+    /// Byte counters per physical interface, so a reconnecting adapter can't be mistaken for a burst of traffic.
+    public static Dictionary<string, (long Rx, long Tx)> TrafficCountersByInterface()
+    {
+        var result = new Dictionary<string, (long, long)>();
+        try
+        {
+            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces().Where(n => IsUp(n) && IsPhysical(n)))
+            {
+                try
+                {
+                    var stats = nic.GetIPStatistics();
+                    result[nic.Id] = (stats.BytesReceived, stats.BytesSent);
+                }
+                catch (Exception e) when (e is NetworkInformationException or PlatformNotSupportedException) { }
+            }
+        }
+        catch (NetworkInformationException) { }
+        return result;
+    }
+
     private static IPInterfaceProperties? SafeProps(NetworkInterface nic)
     {
         try { return nic.GetIPProperties(); }

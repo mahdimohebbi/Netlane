@@ -304,18 +304,34 @@ struct StatisticsCard: View {
                 }
                 .font(.callout.monospacedDigit())
                 Spacer()
-                Chart(model.stats.live) { s in
-                    LineMark(x: .value("t", s.id), y: .value("Down", s.down), series: .value("s", "d")).foregroundStyle(.green)
-                    LineMark(x: .value("t", s.id), y: .value("Up", s.up), series: .value("s", "u")).foregroundStyle(.blue)
-                }
-                .chartXAxis(.hidden).chartYAxis(.hidden)
-                .frame(width: 110, height: 40)
-                .accessibilityHidden(true)
+                miniChart
+                    .frame(width: 130, height: 44)
             }
             Button("Open Statistics", action: open).controlSize(.small)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var miniChart: some View {
+        let samples = model.stats.live
+        let last = samples.last?.id ?? TrafficStats.liveWindow
+        return Chart {
+            ForEach(samples) { s in
+                AreaMark(x: .value("t", s.id), y: .value("Down", s.down), series: .value("s", "d"), stacking: .unstacked)
+                    .foregroundStyle(Color.green.opacity(0.18))
+                LineMark(x: .value("t", s.id), y: .value("Down", s.down), series: .value("s", "d"))
+                    .foregroundStyle(Color.green).interpolationMethod(.monotone)
+                AreaMark(x: .value("t", s.id), y: .value("Up", s.up), series: .value("s", "u"), stacking: .unstacked)
+                    .foregroundStyle(Color.blue.opacity(0.18))
+                LineMark(x: .value("t", s.id), y: .value("Up", s.up), series: .value("s", "u"))
+                    .foregroundStyle(Color.blue).interpolationMethod(.monotone)
+            }
+        }
+        .chartXScale(domain: (last - TrafficStats.liveWindow + 1)...last)
+        .chartYScale(domain: .automatic(includesZero: true))
+        .chartXAxis(.hidden).chartYAxis(.hidden)
+        .accessibilityHidden(true)
     }
 }
